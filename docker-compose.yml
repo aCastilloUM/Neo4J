@@ -1,0 +1,43 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: neo4j-movie-graph-csv-only-db
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-password123}
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512m
+      NEO4J_PLUGINS: '["apoc", "apoc-extended"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_apoc_initializer_neo4j_1: "CALL apoc.cypher.runFile('file:///scripts/constraints.cypher')"
+      NEO4J_apoc_initializer_neo4j_2: "CALL apoc.cypher.runFile('file:///scripts/nodes.cypher')"
+      NEO4J_apoc_initializer_neo4j_3: "CALL apoc.cypher.runFile('file:///scripts/relationships.cypher')"
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+      - ./data/csv:/var/lib/neo4j/import/csv
+      - ./scripts:/var/lib/neo4j/import/scripts
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "cypher-shell -u ${NEO4J_USERNAME:-neo4j} -p ${NEO4J_PASSWORD:-password123} 'RETURN 1' || exit 1"
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
+
